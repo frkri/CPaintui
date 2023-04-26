@@ -19,7 +19,7 @@ apt-get update
 apt-get install python3 python3-pip ninja-build
 
 # Meson (latest version with pip)
-pip3 install --user meson
+pip3 install meson
 
 ```
 
@@ -32,12 +32,12 @@ _Install will be based on the Compiler you use_
 ```bash
 
 # With default (should be GCC on most systems)
-meson build-default
+meson setup build-default
 cd build-default
 
 # With Clang
 # Requires LLVM to be installed, see Dockerfile in .devcontainers for more info
-CC=clang-15 CXX=clang-cpp-15 meson build-clang
+CC=clang-15 CXX=clang-cpp-15 meson setup build-clang
 cd build-clang
 
 # Inside the build directory

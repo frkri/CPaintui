@@ -1,29 +1,36 @@
 #include <curses.h>
 #include <ncurses.h>
 #include <stdio.h>
-#include <unistd.h>
+
+#include "util.c"
 
 int display_modal(char *msg);
 
 int main(void) {
   initscr(); // Initialize ncurses
-  cbreak();  // Stops buffering of Chars
-  noecho();  // Stops chars from being printed to the screen
 
-  printw("Hello World!\n");
-  refresh();
-  clear();
+  // Set Options
+  cbreak();             // Stops buffering of Chars
+  noecho();             // Stops chars from being printed to the screen
+  keypad(stdscr, TRUE); // Allows for arrow keys to be used
+  curs_set(0);          // Hide cursor
 
-  // Prepare Screen for next refresh
-  display_modal("Hello Again!");
+  // Create Windows
+  WINDOW *draw = newwin(20, 30, 0, 0);
+  WINDOW *menu = newwin(20, 30, 0, 30);
 
-  getch(); // Wait for user input
-  refresh();
+  box(draw, 0, 0);
+  box(menu, 0, 0);
 
-  getch();
+  wprintw(draw, "Draw Window");
+  wprintw(menu, "Menu Window");
 
-  // End ncurses
-  endwin();
+  wrefresh(draw);
+  wrefresh(menu);
+
+  wgetch(draw); // Wait for user input on draw window
+
+  endwin(); // End ncurses
 
   return 0;
 }
@@ -37,7 +44,7 @@ int display_modal(char *msg) {
 
   printw("X: %i, Y: %i\n", X, Y);
 
-  mvprintw(15, 200, "MSG: %s\n", msg);
+  mvprintw(15, 15, "MSG: %s\n", msg);
 
   return 0;
 }
