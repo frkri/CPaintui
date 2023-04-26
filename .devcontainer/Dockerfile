@@ -8,7 +8,8 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install build-essential ninja-build wget lsb-release software-properties-common pkg-config \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
-# Get the latest version of LLVM and Clang (including the server Clangd)
+# Get the latest version of LLVM and Clang (including the server Clangd for use with VS Code)
+# See https://apt.llvm.org/ for more information.
 RUN bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 
 ARG USERNAME=vscode
