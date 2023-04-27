@@ -4,7 +4,8 @@
 
 #include "util.c"
 
-int display_modal(char *msg);
+WINDOW *create_win_pad(int pad);
+WINDOW *create_win_relative(WINDOW *win, float w_prc, float h_prc);
 
 int main(void) {
   initscr(); // Initialize ncurses
@@ -15,36 +16,47 @@ int main(void) {
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
-  // Create Windows
-  WINDOW *draw = newwin(20, 30, 0, 0);
-  WINDOW *menu = newwin(20, 30, 0, 30);
+  WINDOW *display = create_win_pad(10);
 
-  box(draw, 0, 0);
-  box(menu, 0, 0);
+  WINDOW *sub = create_win_relative(display, 0.5, 0.5);
 
-  wprintw(draw, "Draw Window");
-  wprintw(menu, "Menu Window");
+  // Use pad for menu win!
 
-  wrefresh(draw);
-  wrefresh(menu);
+  box(display, 0, 0);
+  box(sub, 0, 0);
 
-  wgetch(draw); // Wait for user input on draw window
+  wrefresh(display);
+  wrefresh(sub);
+
+  wgetch(display);
+
+  refresh(); // Refresh the stdscreen
 
   endwin(); // End ncurses
 
   return 0;
 }
 
-int draw_base() { return 0; }
+/*
+  Creates a window relative to the size of window
+*/
+WINDOW *create_win_relative(WINDOW *win, float w_prc, float h_prc) {
 
-int display_modal(char *msg) {
+  int x, y;
+  get_win_size(win, &x, &y);
 
-  int Y = getmaxy(stdscr);
-  int X = getmaxx(stdscr);
+  // TOOD: calc relative cords
+  WINDOW *new_win = derwin(win, y * h_prc, x * w_prc, 0, 0);
 
-  printw("X: %i, Y: %i\n", X, Y);
+  return new_win;
+}
 
-  mvprintw(15, 15, "MSG: %s\n", msg);
+/*
+  Creates a middle centered window with margin
+*/
+WINDOW *create_win_pad(int mar) {
+  int x, y;
+  get_win_size(stdscr, &x, &y);
 
-  return 0;
+  return newwin(y - mar, x - mar, 5, 5);
 }
