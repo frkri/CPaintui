@@ -4,8 +4,8 @@
 
 #include "util.c"
 
-WINDOW *create_win_pad(int pad);
-WINDOW *create_win_relative(WINDOW *win, float w_prc, float h_prc);
+struct container setup_windows(void);
+void create_windows(struct container *container, int xx, int yy);
 
 int main(void) {
   initscr(); // Initialize ncurses
@@ -16,47 +16,107 @@ int main(void) {
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
-  WINDOW *display = create_win_pad(10);
+  struct container display = setup_windows();
 
-  WINDOW *sub = create_win_relative(display, 0.5, 0.5);
-
-  // Use pad for menu win!
-
-  box(display, 0, 0);
-  box(sub, 0, 0);
-
-  wrefresh(display);
-  wrefresh(sub);
-
-  wgetch(display);
-
-  refresh(); // Refresh the stdscreen
+  wgetch(display.children[0]->children[0]->win);
 
   endwin(); // End ncurses
-
   return 0;
 }
 
 /*
-  Creates a window relative to the size of window
+  Defines and draws the layout of the windows
+  Row 1: Canvas - Info
+  Row 2: Tools - Log
 */
-WINDOW *create_win_relative(WINDOW *win, float w_prc, float h_prc) {
+struct container setup_windows(void) {
+  // Main window
+  struct container display = {100,    100,  NULL, true, false,
+                              stdscr, NULL, NULL, 0};
 
-  int x, y;
-  get_win_size(win, &x, &y);
+  // Top row
+  struct container top_row = {100, 80, NULL, true, false, NULL, NULL, NULL, 0};
+  struct container canvas = {70,   100,  "Canvas", true, true,
+                             NULL, NULL, NULL,     0};
+  struct container info = {30, 100, "Info", true, true, NULL, NULL, NULL, 0};
 
-  // TOOD: calc relative cords
-  WINDOW *new_win = derwin(win, y * h_prc, x * w_prc, 0, 0);
+  // Bottom row
+  struct container bottom_row = {100,  20,   NULL, true, false,
+                                 NULL, NULL, NULL, 0};
+  struct container tools = {70, 100, "Tools", true, true, NULL, NULL, NULL, 0};
+  struct container log = {30, 100, "Log", true, true, NULL, NULL, NULL, 0};
 
-  return new_win;
+  // Append rows to display
+  append_container(&display, &top_row);
+  append_container(&display, &bottom_row);
+
+  // Append containers to top row
+  append_container(&top_row, &canvas);
+  append_container(&top_row, &info);
+
+  // Append containers to bottom row
+  append_container(&bottom_row, &tools);
+  append_container(&bottom_row, &log);
+
+  // Create windows from layout
+  create_windows(&display, 0, 0);
+
+  return display;
 }
 
-/*
-  Creates a middle centered window with margin
-*/
-WINDOW *create_win_pad(int mar) {
-  int x, y;
-  get_win_size(stdscr, &x, &y);
+// Creates the windows for the container and its children
+void create_windows(struct container *container, int container_x_offset,
+                    int container_y_offset) {
 
-  return newwin(y - mar, x - mar, 5, 5);
+  // Get the size of the parent window
+  int parent_w, parent_h;
+  get_window_size(container->parent, &parent_w, &parent_h);
+
+  // Calculate the width and height
+  const int w = parent_w * container->prc_w / 100;
+  const int h = parent_h * container->prc_h / 100;
+
+  // Create the window
+  container->win =
+      derwin(container->parent, h, w, container_y_offset, container_x_offset);
+
+  // Draw box if needed
+  if (container->box)
+    box(container->win, 0, 0);
+
+  // Print the title
+  mvwprintw(container->win, 0, 1, " %s ", container->title);
+
+  // Copy the window to the virtual screen
+  // See: https://www.man7.org/linux/man-pages/man3/curs_refresh.3x.html
+  wnoutrefresh(container->win);
+
+  int x_offset = 0;
+  int y_offset = 0;
+
+  int x = 0;
+  int y = 0;
+
+  // Create the child windows
+  for (int i = 0; i < container->children_len; i++) {
+    container->children[i]->parent = container->win;
+
+    create_windows(container->children[i], x, y);
+
+    // Add offset for the next child window
+    x_offset += container->children[i]->prc_w;
+    y_offset += container->children[i]->prc_h;
+
+    if (x_offset >= 100)
+      x_offset = 0;
+    if (y_offset >= 100)
+      y_offset = 0;
+
+    // Calculate the x and y coordinates of the child windows
+    x = x_offset * w / 100;
+    y = y_offset * h / 100;
+  }
+
+  // Finally, update the screen
+  doupdate();
 }
