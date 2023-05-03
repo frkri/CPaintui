@@ -1,13 +1,46 @@
 #include <curses.h>
 #include <ncurses.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
+#include "fs.c"
 #include "util.c"
 
 struct container setup_windows(void);
-void create_windows(struct container *container, int xx, int yy);
 
-int main(void) {
+void create_windows(struct container *container, int container_x_offset,
+                    int container_y_offset);
+
+void load_canvas_from_file(char *filename, struct canvas_data *canvas_d);
+
+int main(int argc, char *argv[]) {
+  // Check if atleast one argument is passed
+  // Where argv[0] is the program name
+  // and argv[1] is the first argument (filename)
+  if (argc < 2) {
+    printf("Usage: %s <filename>\n", argv[0]);
+    return 1;
+  }
+
+  struct canvas_data canvas_d = {0, 0, NULL};
+
+  load_canvas_from_file(argv[1], &canvas_d);
+
+  printf("deserialized file!\n");
+
+  printf("%d\n", canvas_d.width);
+  printf("%d\n", canvas_d.height);
+
+  printf("%d\n", canvas_d.data[0][0].color);
+  printf("%d\n", canvas_d.data[0][0].last_modified);
+
+  printf("%d\n", canvas_d.data[0][1].color);
+  printf("%d\n", canvas_d.data[0][1].last_modified);
+
+  sleep(9999999);
+
   initscr(); // Initialize ncurses
 
   // Set Options
@@ -16,9 +49,29 @@ int main(void) {
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
+  // Setup windows
   struct container display = setup_windows();
+  struct container *canvas = display.children[0]->children[0];
+  struct container *info = display.children[0]->children[1];
+  struct container *tools = display.children[1]->children[0];
+  struct container *log = display.children[1]->children[1];
 
-  wgetch(display.children[0]->children[0]->win);
+  // Wait for input
+  int ch;
+
+  while ((ch = getch()) != 'q') {
+
+    switch (ch) {
+    case KEY_RESIZE:
+      clear();
+      display = setup_windows();
+    default:
+      break;
+    }
+
+    // Update the screen
+    refresh();
+  }
 
   endwin(); // End ncurses
   return 0;
@@ -27,7 +80,7 @@ int main(void) {
 /*
   Defines and draws the layout of the windows
   Row 1: Canvas - Info
-  Row 2: Tools - Log
+  Row 2: Tools  - Log
 */
 struct container setup_windows(void) {
   // Main window
@@ -36,7 +89,7 @@ struct container setup_windows(void) {
 
   // Top row
   struct container top_row = {100, 80, NULL, true, false, NULL, NULL, NULL, 0};
-  struct container canvas = {70,   100,  "Canvas", true, true,
+  struct container canvas = {70,   100,  "Canvas", true, false,
                              NULL, NULL, NULL,     0};
   struct container info = {30, 100, "Info", true, true, NULL, NULL, NULL, 0};
 
@@ -119,4 +172,21 @@ void create_windows(struct container *container, int container_x_offset,
 
   // Finally, update the screen
   doupdate();
+}
+
+void load_canvas_from_file(char *filename, struct canvas_data *canvas) {
+  // Will be allocated by load_file
+  char *buffer = NULL;
+
+  buffer = load_file(filename);
+  if (buffer == NULL) {
+    printf("Error: Could not load file\n");
+    exit(1);
+  }
+
+  printf("Buffer: %s\n\n\n\n", buffer);
+
+  deserialize_buffer(canvas, buffer);
+
+  free(buffer);
 }
