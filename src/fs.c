@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Preface: Working with in memory data structures allow for easier and more
-// flexible manipulation of data, we only write to the file when we need to
-
 struct canvas_data {
   int width;
   int height;
@@ -16,7 +13,6 @@ struct canvas_data {
 
 struct canvas_pixel {
   int color;
-
   int last_modified;
 };
 
@@ -28,7 +24,6 @@ struct canvas_pixel {
 char *load_file(char *filename) {
   // See: https://stackoverflow.com/a/2029227
 
-  // Open the file
   FILE *fp = fopen(filename, "r");
   if (fp == NULL) {
     printf("Could not open file %s", filename);
@@ -47,7 +42,6 @@ char *load_file(char *filename) {
   // Read the file into the buffer
   fread(buffer, sizeof(char), file_len, fp);
 
-  // Close the file
   fclose(fp);
 
   return buffer;
@@ -85,10 +79,13 @@ int serialize_buffer(struct canvas_data *canvas, char *buffer) {
   // readability when manually editing file
   for (int x = 0; x < canvas->width; x++)
     for (int y = 0; y < canvas->height; y++) {
-      struct canvas_pixel *pixel = &canvas->data[x][y];
+      struct canvas_pixel pixel = canvas->data[x][y];
 
-      sprintf(buffer, "%s%d,%d,%d,%d;", buffer, x, y, pixel->color,
-              pixel->last_modified);
+      char pixel_str[5] = {0};
+
+      // Append the pixel data to the buffer
+      sprintf(pixel_str, "%d,%d;", pixel.color, pixel.last_modified);
+      strcat(buffer, pixel_str);
     }
 
   return 0;
@@ -98,61 +95,58 @@ int serialize_buffer(struct canvas_data *canvas, char *buffer) {
     Copies data from buffer to a new canvas data structure
 
     Requires a char buffer with the following format:
-    <width>,<height>;<x>,<y>,<color>,<last_modified>;...
+    <width>,<height>;<color>,<last_modified>;...
 */
-int deserialize_buffer(struct canvas_data *canvas, char *buffer) {
+struct canvas_data *deserialize_buffer(char *buffer) {
   /*
-    strtok allow us to split a string until a delimiter is found
-    Given an NULL pointer (after calling strtok with a string), strtok will
-    continue from the last string excluding the delimiter
+    strsep is used to split the buffer into tokens, it's meant to be a
+    replacement for strtok, but strsep might not be available on all platforms
 
-    See: https://cplusplus.com/reference/cstring/strtok/
+    See: https://man7.org/linux/man-pages/man3/strsep.3.html
   */
 
+  // TODO: Consider using memory arenas
+  // TODO: Consider using strtok_r instead of strsep for better support
+
+  // Create a new canvas, needs to be a pointer so we can return it
+  struct canvas_data *canvas = malloc(sizeof(struct canvas_data));
+
   // Set width and height
-  char *width_str = strtok(buffer, ",");
-  char *height_str = strtok(NULL, ";");
+  char *width_str = strsep(&buffer, ",");
+  char *height_str = strsep(&buffer, ";");
 
   canvas->width = atoi(width_str);
   canvas->height = atoi(height_str);
 
-  printf("Width: %d\n", canvas->width);
-  printf("Height: %d\n\n\n", canvas->height);
+  // Allocate memory for each row
+  canvas->data = malloc(canvas->width * sizeof(struct canvas_pixel *));
 
-  canvas->data = (struct canvas_pixel **)malloc(canvas->width *
-                                                sizeof(struct canvas_pixel *));
-
+  // Allocate memory for each column
   for (int i = 0; i < canvas->width; i++)
-    canvas->data[0] = (struct canvas_pixel *)malloc(
-        canvas->height * sizeof(struct canvas_pixel *));
+    canvas->data[i] = malloc(canvas->height * sizeof(struct canvas_pixel));
 
-  int x = 0, y = 0;
+  for (int x = 0, y = 0; x < canvas->width; y++) {
 
-  char *pixel_str = strtok(NULL, ";");
-  while (x != canvas->width && y != canvas->height) {
-    printf("\n\nNEW: %s from %s\n", pixel_str, buffer);
-    struct canvas_pixel *pixel = malloc(sizeof(struct canvas_pixel));
+    // Get the next pixel data
+    char *pixel_str = strsep(&buffer, ";");
 
-    char *color_str = strtok(NULL, ",");
-    char *last_modified_str = strtok(NULL, ",");
+    // Get first value (color), leave the rest in pixel_str (last_modified)
+    char *color_str = strsep(&pixel_str, ",");
 
-    pixel->color = atoi(color_str);
-    pixel->last_modified = atoi(last_modified_str);
+    int color = atoi(color_str);
+    int last_modified = atoi(pixel_str);
 
-    printf("%s from %s\n", pixel_str, buffer);
+    // Create a new pixel
+    struct canvas_pixel pixel = {color, last_modified};
 
-    printf("%d,%d,%d,%d\n", x, y, pixel->color, pixel->last_modified);
+    canvas->data[x][y] = pixel;
 
-    canvas->data[x][y] = *pixel;
-
-    y++;
-    if (y == canvas->height) {
-      y = 0;
+    // If we have reached the end of the row, move to the next row
+    if (y == canvas->height - 1) {
       x++;
+      y = -1; // y will be 0 on next iteration
     }
-
-    pixel_str = strtok(buffer, ";");
   }
 
-  return 0;
+  return canvas;
 }

@@ -1,4 +1,3 @@
-#include <curses.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,38 +7,21 @@
 #include "fs.c"
 #include "util.c"
 
+struct canvas_data *load_canvas_from_file(char *filename);
 struct container setup_windows(void);
-
 void create_windows(struct container *container, int container_x_offset,
                     int container_y_offset);
-
-void load_canvas_from_file(char *filename, struct canvas_data *canvas_d);
 
 int main(int argc, char *argv[]) {
   // Check if atleast one argument is passed
   // Where argv[0] is the program name
   // and argv[1] is the first argument (filename)
-  if (argc < 2) {
+  if (argc != 2) {
     printf("Usage: %s <filename>\n", argv[0]);
     return 1;
   }
 
-  struct canvas_data canvas_d = {0, 0, NULL};
-
-  load_canvas_from_file(argv[1], &canvas_d);
-
-  printf("deserialized file!\n");
-
-  printf("%d\n", canvas_d.width);
-  printf("%d\n", canvas_d.height);
-
-  printf("%d\n", canvas_d.data[0][0].color);
-  printf("%d\n", canvas_d.data[0][0].last_modified);
-
-  printf("%d\n", canvas_d.data[0][1].color);
-  printf("%d\n", canvas_d.data[0][1].last_modified);
-
-  sleep(9999999);
+  struct canvas_data *canvas_d = load_canvas_from_file(argv[1]);
 
   initscr(); // Initialize ncurses
 
@@ -49,12 +31,7 @@ int main(int argc, char *argv[]) {
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
-  // Setup windows
   struct container display = setup_windows();
-  struct container *canvas = display.children[0]->children[0];
-  struct container *info = display.children[0]->children[1];
-  struct container *tools = display.children[1]->children[0];
-  struct container *log = display.children[1]->children[1];
 
   // Wait for input
   int ch;
@@ -64,7 +41,7 @@ int main(int argc, char *argv[]) {
     switch (ch) {
     case KEY_RESIZE:
       clear();
-      display = setup_windows();
+      display = setup_windows(); // TODO: Currently leaks memory
     default:
       break;
     }
@@ -74,6 +51,18 @@ int main(int argc, char *argv[]) {
   }
 
   endwin(); // End ncurses
+
+  // Free the containers
+  free(display.children[0]->children);
+  free(display.children[1]->children);
+  free(display.children);
+
+  // Free the canvas data
+  for (int i = 0; i < canvas_d->width; i++)
+    free(canvas_d->data[i]);
+  free(canvas_d->data);
+  free(canvas_d);
+
   return 0;
 }
 
@@ -174,19 +163,16 @@ void create_windows(struct container *container, int container_x_offset,
   doupdate();
 }
 
-void load_canvas_from_file(char *filename, struct canvas_data *canvas) {
-  // Will be allocated by load_file
-  char *buffer = NULL;
-
-  buffer = load_file(filename);
+struct canvas_data *load_canvas_from_file(char *filename) {
+  char *buffer = load_file(filename);
   if (buffer == NULL) {
     printf("Error: Could not load file\n");
     exit(1);
   }
 
-  printf("Buffer: %s\n\n\n\n", buffer);
-
-  deserialize_buffer(canvas, buffer);
+  struct canvas_data *canvas_d = deserialize_buffer(buffer);
 
   free(buffer);
+
+  return canvas_d;
 }

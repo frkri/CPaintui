@@ -50,7 +50,7 @@ WINDOW *create_window_centered(WINDOW *win, int margin_w, int margin_h) {
 }
 
 /*
-  Creates a window relative to the size of window
+  Creates a inner window relative to the size of window
 */
 WINDOW *create_window_relative(WINDOW *win, float w_prc, float h_prc) {
   int w, h;
@@ -67,14 +67,21 @@ WINDOW *create_window_relative(WINDOW *win, float w_prc, float h_prc) {
 }
 
 /*
-  Appends a container to a parent container
-  This will reallocate memory of the array for the new child container
+  Appends a child container to a parent container
+  This will reallocate memory of the array for the new child container, as we
+  don't know how many children a container will have
 */
 int append_container(struct container *parent, struct container *child) {
   // Reallocate memory block for new child
+
   // This will be the size of the old array + 1
   int new_size = sizeof(struct container *) * (parent->children_len + 1);
+
   parent->children = realloc(parent->children, new_size);
+  if (parent->children == NULL) {
+    printf("Could not allocate memory for new child container");
+    return 1;
+  }
 
   // Append child to second to last index, leaving the last index empty
   parent->children[parent->children_len] = child;
