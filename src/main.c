@@ -1,3 +1,4 @@
+#include <curses.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,10 +8,12 @@
 #include "fs.c"
 #include "util.c"
 
+// TODO: Move to .h file
 struct canvas_data *load_canvas_from_file(char *filename);
 struct container setup_windows(void);
 void create_windows(struct container *container, int container_x_offset,
                     int container_y_offset);
+int update_canvas_state(struct canvas_data *canvas_d, struct container display);
 
 int main(int argc, char *argv[]) {
   // Check if atleast one argument is passed
@@ -23,6 +26,9 @@ int main(int argc, char *argv[]) {
 
   struct canvas_data *canvas_d = load_canvas_from_file(argv[1]);
 
+  printf("Width: %d\n", canvas_d->width);
+  printf("Height: %d\n", canvas_d->height);
+
   initscr(); // Initialize ncurses
 
   // Set Options
@@ -31,7 +37,22 @@ int main(int argc, char *argv[]) {
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
+  // TODO: Check for color support
+  start_color(); // Enable color
+  init_pair(0, COLOR_BLACK, COLOR_BLACK);
+  init_pair(1, COLOR_RED, COLOR_RED);
+  init_pair(2, COLOR_GREEN, COLOR_GREEN);
+  init_pair(3, COLOR_YELLOW, COLOR_YELLOW);
+  init_pair(4, COLOR_BLUE, COLOR_BLUE);
+  init_pair(5, COLOR_MAGENTA, COLOR_MAGENTA);
+  init_pair(6, COLOR_CYAN, COLOR_CYAN);
+  init_pair(7, COLOR_WHITE, COLOR_WHITE);
+
   struct container display = setup_windows();
+
+  printf("Display: %d\n", display.children_len);
+
+  update_canvas_state(canvas_d, display);
 
   // Wait for input
   int ch;
@@ -41,7 +62,7 @@ int main(int argc, char *argv[]) {
     switch (ch) {
     case KEY_RESIZE:
       clear();
-      display = setup_windows(); // TODO: Currently leaks memory
+      display = setup_windows();
     default:
       break;
     }
@@ -53,8 +74,6 @@ int main(int argc, char *argv[]) {
   endwin(); // End ncurses
 
   // Free the containers
-  free(display.children[0]->children);
-  free(display.children[1]->children);
   free(display.children);
 
   // Free the canvas data
@@ -63,6 +82,33 @@ int main(int argc, char *argv[]) {
   free(canvas_d->data);
   free(canvas_d);
 
+  return 0;
+}
+
+int update_canvas_state(struct canvas_data *canvas_d,
+                        struct container display) {
+  WINDOW *canvas = display.children[0]->children[0]->win;
+  // This fails
+  // printf("Canvas: %s\n", display.children[0]->children[0]->title);
+
+  for (int x = 0; x < canvas_d->width; x++)
+    for (int y = 0; y < canvas_d->height; y++) {
+      struct canvas_pixel *pixel = &canvas_d->data[x][y];
+
+      // Set the color
+      wattron(canvas, COLOR_PAIR(pixel->color));
+
+      // Draw the pixel
+      mvwprintw(canvas, y + 1, x + 1, " ");
+
+      // Reset the color
+      wattroff(canvas, COLOR_PAIR(pixel->color));
+
+      // Copy the window to the virtual screen
+    }
+  wnoutrefresh(canvas);
+
+  doupdate();
   return 0;
 }
 
@@ -78,9 +124,9 @@ struct container setup_windows(void) {
 
   // Top row
   struct container top_row = {100, 80, NULL, true, false, NULL, NULL, NULL, 0};
-  struct container canvas = {70,   100,  "Canvas", true, false,
+  struct container canvas = {80,   100,  "Canvas", true, false,
                              NULL, NULL, NULL,     0};
-  struct container info = {30, 100, "Info", true, true, NULL, NULL, NULL, 0};
+  struct container info = {20, 100, "Info", true, true, NULL, NULL, NULL, 0};
 
   // Bottom row
   struct container bottom_row = {100,  20,   NULL, true, false,
