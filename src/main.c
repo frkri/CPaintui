@@ -1,11 +1,10 @@
-#include <curses.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "fs.c"
+#include "modal.c"
 #include "util.c"
 
 // TODO: Move to .h file
@@ -13,7 +12,9 @@ struct canvas_data *load_canvas_from_file(char *filename);
 struct container setup_windows(void);
 void create_windows(struct container *container, int container_x_offset,
                     int container_y_offset);
-int update_canvas_state(struct canvas_data *canvas_d, struct container display);
+int refresh_canvas_state(struct canvas_data *canvas_d,
+                         struct container display);
+int init_help_modal(void);
 
 int main(int argc, char *argv[]) {
   // Check if atleast one argument is passed
@@ -25,9 +26,6 @@ int main(int argc, char *argv[]) {
   }
 
   struct canvas_data *canvas_d = load_canvas_from_file(argv[1]);
-
-  printf("Width: %d\n", canvas_d->width);
-  printf("Height: %d\n", canvas_d->height);
 
   initscr(); // Initialize ncurses
 
@@ -49,26 +47,28 @@ int main(int argc, char *argv[]) {
   init_pair(7, COLOR_WHITE, COLOR_WHITE);
 
   struct container display = setup_windows();
-
-  printf("Display: %d\n", display.children_len);
-
-  update_canvas_state(canvas_d, display);
+  refresh_canvas_state(canvas_d, display);
 
   // Wait for input
   int ch;
 
   while ((ch = getch()) != 'q') {
+    mvwprintw(stdscr, 3, 2, "char: %i", ch);
 
     switch (ch) {
     case KEY_RESIZE:
       clear();
-      display = setup_windows();
+      setup_windows();
+      refresh_canvas_state(canvas_d, display);
+      // Update the screen
+      refresh();
+      break;
+    case 'h':
+      init_help_modal();
+      break;
     default:
       break;
     }
-
-    // Update the screen
-    refresh();
   }
 
   endwin(); // End ncurses
@@ -82,32 +82,57 @@ int main(int argc, char *argv[]) {
   free(canvas_d->data);
   free(canvas_d);
 
+  printf("Done\n");
+
   return 0;
 }
 
-int update_canvas_state(struct canvas_data *canvas_d,
-                        struct container display) {
+int init_help_modal(void) {
+  struct modal modal_help = {stdscr, "Help", "Help text", true};
+
+  if (create_dialog_new(&modal_help))
+    printf("User acknowledged\n");
+  else
+    printf("User did not acknowledge\n");
+
+  return 0;
+}
+
+int refresh_canvas_state(struct canvas_data *canvas_d,
+                         struct container display) {
   WINDOW *canvas = display.children[0]->children[0]->win;
   // This fails
-  // printf("Canvas: %s\n", display.children[0]->children[0]->title);
+  // mvprintw(0, 0, "Canvas: %s\n", display.children[0]->children[0]->title);
 
   for (int x = 0; x < canvas_d->width; x++)
     for (int y = 0; y < canvas_d->height; y++) {
       struct canvas_pixel *pixel = &canvas_d->data[x][y];
 
-      // Set the color
+      // Get the size of the parent window
+      int parent_w, parent_h;
+      get_window_size(canvas, &parent_w, &parent_h);
+
+      // Calculate the middle of the parent window
+      int x_offset = (parent_w - canvas_d->width) / 2 + x;
+      int y_offset = (parent_h - canvas_d->height) / 2 + y;
+
+      mvprintw(0, 0, " %d %d ", parent_w, parent_h);
+      mvwprintw(canvas, 1, 0, " %d %d ", x_offset, y_offset);
+
+      // Set the color attribute
       wattron(canvas, COLOR_PAIR(pixel->color));
 
       // Draw the pixel
-      mvwprintw(canvas, y + 1, x + 1, " ");
+      mvwprintw(canvas, y_offset, x_offset, " ");
 
-      // Reset the color
+      // Reset the color attribute
       wattroff(canvas, COLOR_PAIR(pixel->color));
 
       // Copy the window to the virtual screen
+      wnoutrefresh(canvas);
     }
-  wnoutrefresh(canvas);
 
+  // Finally, update the screen
   doupdate();
   return 0;
 }
@@ -131,8 +156,8 @@ struct container setup_windows(void) {
   // Bottom row
   struct container bottom_row = {100,  20,   NULL, true, false,
                                  NULL, NULL, NULL, 0};
-  struct container tools = {70, 100, "Tools", true, true, NULL, NULL, NULL, 0};
-  struct container log = {30, 100, "Log", true, true, NULL, NULL, NULL, 0};
+  struct container tools = {80, 100, "Tools", true, true, NULL, NULL, NULL, 0};
+  struct container log = {20, 100, "Log", true, true, NULL, NULL, NULL, 0};
 
   // Append rows to display
   append_container(&display, &top_row);
