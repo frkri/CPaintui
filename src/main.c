@@ -1,4 +1,6 @@
+#include <curses.h>
 #include <ncurses.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +16,8 @@ void create_windows(struct container *container, int container_x_offset,
                     int container_y_offset);
 int refresh_canvas_state(struct canvas_data *canvas_d,
                          struct container display);
-int init_help_modal(void);
+int show_help_modal(void);
+int show_canvas_creation_modal(void);
 
 int main(int argc, char *argv[]) {
   // Check if atleast one argument is passed
@@ -25,7 +28,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  struct canvas_data *canvas_d = load_canvas_from_file(argv[1]);
+  struct canvas_data *canvas_data = load_canvas_from_file(argv[1]);
 
   initscr(); // Initialize ncurses
 
@@ -35,7 +38,7 @@ int main(int argc, char *argv[]) {
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
-  // TODO: Check for color support
+  // TODO: Check for color support and make this configurable
   start_color(); // Enable color
   init_pair(0, COLOR_BLACK, COLOR_BLACK);
   init_pair(1, COLOR_RED, COLOR_RED);
@@ -47,7 +50,7 @@ int main(int argc, char *argv[]) {
   init_pair(7, COLOR_WHITE, COLOR_WHITE);
 
   struct container display = setup_windows();
-  refresh_canvas_state(canvas_d, display);
+  refresh_canvas_state(canvas_data, display);
 
   // Wait for input
   int ch;
@@ -59,13 +62,15 @@ int main(int argc, char *argv[]) {
     case KEY_RESIZE:
       clear();
       setup_windows();
-      refresh_canvas_state(canvas_d, display);
+      refresh_canvas_state(canvas_data, display);
       // Update the screen
       refresh();
       break;
     case 'h':
-      init_help_modal();
+      show_help_modal();
       break;
+    case 'w':
+      show_canvas_creation_modal();
     default:
       break;
     }
@@ -77,24 +82,40 @@ int main(int argc, char *argv[]) {
   free(display.children);
 
   // Free the canvas data
-  for (int i = 0; i < canvas_d->width; i++)
-    free(canvas_d->data[i]);
-  free(canvas_d->data);
-  free(canvas_d);
+  for (int i = 0; i < canvas_data->width; i++)
+    free(canvas_data->data[i]);
+  free(canvas_data->data);
+  free(canvas_data);
 
   printf("Done\n");
 
   return 0;
 }
 
-int init_help_modal(void) {
-  struct modal modal_help = {stdscr, "Help", "Help text", true};
+int show_help_modal(void) {
+  struct modal modal_help = {
+      "Help", "h - Open help window\n w - Write current canvas to file",
+      "yY",   true,
+      0,      NULL};
 
-  if (create_dialog_new(&modal_help))
+  if (create_modal_new(&modal_help))
     printf("User acknowledged\n");
   else
     printf("User did not acknowledge\n");
 
+  return 0;
+}
+
+int show_canvas_creation_modal(void) {
+  // TODO: Add validation and handle multiple inputs
+  // Maybe add new array just for input results?
+  struct modal modal_canvas = {
+      "Create new canvas", "Enter size of canvas (X-Y)", "", true, 15, NULL};
+
+  create_modal_new(&modal_canvas);
+  printf("Received input: %s\n", modal_canvas.input);
+
+  refresh();
   return 0;
 }
 
