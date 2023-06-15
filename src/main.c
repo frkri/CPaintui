@@ -7,23 +7,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "fs.c"
-#include "logger.c"
-#include "modal.c"
-#include "win.c"
-
-// TODO: Move to .h file
-struct canvas_data *load_canvas_from_file(char *filename);
-struct container *setup_display(void);
-void draw_windows(struct container *container, int container_x_offset,
-                  int container_y_offset);
-int refresh_canvas_state(struct canvas_data *canvas_d,
-                         struct container *display);
-int show_help_modal(void);
-int show_creation_modal(void);
-bool show_quit_modal(void);
-void exit_self(struct container *display, struct canvas_data *canvas_data,
-               char *msg);
+#include "fs.h"
+#include "logger.h"
+#include "main.h"
+#include "modal.h"
+#include "win.h"
 
 int main(int argc, char *argv[]) {
   // Check if atleast one argument is passed
@@ -42,7 +30,7 @@ int main(int argc, char *argv[]) {
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
-  // Enable colorwwwww
+  // Enable color
   start_color();
   init_pair(0, COLOR_BLACK, COLOR_BLACK);
   init_pair(1, COLOR_RED, COLOR_RED);
@@ -99,10 +87,7 @@ int main(int argc, char *argv[]) {
 
 void exit_self(struct container *display, struct canvas_data *canvas_data,
                char *msg) {
-  // Free the logger
   cleanup_log();
-
-  // Cleanup ncurses and data
   endwin();
   printf("%s\n", msg);
 
@@ -365,20 +350,14 @@ struct canvas_data *load_canvas_from_file(char *filename) {
   if (buffer == NULL) {
     log_info("Failed to load file");
 
-    // Create empty canvas data, by asigning the buffer to a default value
-    buffer =
-        "5,5;1,1;2,2;5,1;2,2;1,1;2,2;8,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,"
-        "1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;"
-        "1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,"
-        "2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;"
-        "2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,"
-        "1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;"
-        "1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,"
-        "2;1,1;2,2;1,1;2,2;1,1;2,2;";
+    buffer = malloc(sizeof(char) * 1000);
 
+    // Create empty canvas data, by asigning the buffer to a default value
+    // TODO: make this cleaner
+    buffer = "5,5;1,1;2,2;5,1;2,2;1,1;2,2;7,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;"
+             "2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;";
     // Save the new empty canvas to the file
     write_file(filename, buffer);
-    sleep(2);
   }
   struct canvas_data *canvas_d = deserialize_buffer(buffer);
   if (canvas_d == NULL) {
