@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-struct canvas_data *load_canvas_from_file(char *filename);
+struct canvas_data *load_canvas_from_file(char *filename, int w, int h);
 struct container *setup_display(void);
 void draw_windows(struct container *container, int container_x_offset,
                   int container_y_offset);

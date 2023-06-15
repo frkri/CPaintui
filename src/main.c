@@ -1,22 +1,21 @@
 #include <ctype.h>
 #include <curses.h>
 #include <ncurses.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "fs.h"
 #include "logger.h"
 #include "main.h"
 #include "modal.h"
+#include "util.h"
 #include "win.h"
 
 int main(int argc, char *argv[]) {
-  // Check if atleast one argument is passed
   // Where argv[0] is the program name
-  // and argv[1] is the first argument (filename)
+  // and argv[1] is the first argument (filename).
+  // Rest of the arguments are ignored
   if (argc != 2) {
     printf("Usage: %s <filename>\n", argv[0]);
     return 1;
@@ -32,22 +31,24 @@ int main(int argc, char *argv[]) {
 
   // Enable color
   start_color();
-  init_pair(0, COLOR_BLACK, COLOR_BLACK);
-  init_pair(1, COLOR_RED, COLOR_RED);
-  init_pair(2, COLOR_GREEN, COLOR_GREEN);
+  init_pair(0, COLOR_WHITE, COLOR_WHITE);
+  init_pair(1, COLOR_BLACK, COLOR_BLACK);
+  init_pair(2, COLOR_RED, COLOR_RED);
   init_pair(3, COLOR_YELLOW, COLOR_YELLOW);
-  init_pair(4, COLOR_BLUE, COLOR_BLUE);
-  init_pair(5, COLOR_MAGENTA, COLOR_MAGENTA);
-  init_pair(6, COLOR_CYAN, COLOR_CYAN);
-  init_pair(7, COLOR_WHITE, COLOR_WHITE);
+  init_pair(4, COLOR_GREEN, COLOR_GREEN);
+  init_pair(5, COLOR_CYAN, COLOR_CYAN);
+  init_pair(6, COLOR_BLUE, COLOR_BLUE);
+  init_pair(7, COLOR_MAGENTA, COLOR_MAGENTA);
 
-  // Init
   struct container *display = setup_display();
-  // Create windows from layout
   draw_windows(display, 0, 0);
   setup_log(display->children[1]->children[1]->win);
-  // Prompt user for canvas size if file does not exist
-  struct canvas_data *canvas_data = load_canvas_from_file(argv[1]);
+
+  // Create canvas data from file, if file is not found, create new canvas using
+  // window size as default
+  int w, h;
+  get_window_size(display->children[0]->children[0]->win, &w, &h);
+  struct canvas_data *canvas_data = load_canvas_from_file(argv[1], w, h);
   if (canvas_data == NULL)
     exit_self(display, canvas_data,
               "Could not read file, check if file contains a valid canvas");
@@ -83,6 +84,8 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
+
+  return 0;
 }
 
 void exit_self(struct container *display, struct canvas_data *canvas_data,
@@ -150,7 +153,6 @@ int refresh_canvas_state(struct canvas_data *canvas_d,
     for (int y = 0; y < canvas_d->height; y++) {
       struct canvas_pixel *pixel = &canvas_d->data[x][y];
 
-      // Get the size of the parent window
       int parent_w, parent_h;
       get_window_size(canvas, &parent_w, &parent_h);
 
@@ -158,13 +160,8 @@ int refresh_canvas_state(struct canvas_data *canvas_d,
       int x_offset = (parent_w - canvas_d->width) / 2 + x;
       int y_offset = (parent_h - canvas_d->height) / 2 + y;
 
-      // Set the color attribute
       wattron(canvas, COLOR_PAIR(pixel->color));
-
-      // Draw the pixel
       mvwprintw(canvas, y_offset, x_offset, " ");
-
-      // Reset the color attribute
       wattroff(canvas, COLOR_PAIR(pixel->color));
 
       // Copy the window to the virtual screen
@@ -182,7 +179,6 @@ int refresh_canvas_state(struct canvas_data *canvas_d,
   Row 2: Tools  - Log
 */
 struct container *setup_display(void) {
-  // Main window
   struct container *display = malloc(sizeof(struct container));
   display->type = win;
   display->prc_w = 100;
@@ -259,25 +255,27 @@ struct container *setup_display(void) {
   log->children = NULL;
   log->children_len = 0;
 
-  // Append children to display
+  // Append rows to display
   append_container(display, top_row);
   append_container(display, bottom_row);
 
-  // Append children to top row
+  // Append panels to top row
   append_container(top_row, canvas);
   append_container(top_row, info);
 
-  // Append children to bottom row
+  // Append panels to bottom row
   append_container(bottom_row, tools);
   append_container(bottom_row, log);
 
   return display;
 }
 
-// Creates the windows for the container and its children
+/*
+  Creates & displays the windows from a
+  struct representing the layout
+*/
 void draw_windows(struct container *container, int container_x_offset,
                   int container_y_offset) {
-
   if (container->visible == false)
     return;
 
@@ -345,20 +343,15 @@ void draw_windows(struct container *container, int container_x_offset,
   Will load a canvas from a file, if the file does not exist, it will create a
   new blank canvas file
 */
-struct canvas_data *load_canvas_from_file(char *filename) {
+struct canvas_data *load_canvas_from_file(char *filename, int w, int h) {
   char *buffer = load_file(filename);
   if (buffer == NULL) {
-    log_info("Failed to load file");
-
-    buffer = malloc(sizeof(char) * 1000);
-
-    // Create empty canvas data, by asigning the buffer to a default value
-    // TODO: make this cleaner
-    buffer = "5,5;1,1;2,2;5,1;2,2;1,1;2,2;7,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;"
-             "2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;2,2;1,1;";
-    // Save the new empty canvas to the file
+    log_info("File not found, creating new blank canvas");
+    buffer = create_buffer(w - 5, h - 2, 5);
     write_file(filename, buffer);
+    buffer = load_file(filename);
   }
+
   struct canvas_data *canvas_d = deserialize_buffer(buffer);
   if (canvas_d == NULL) {
     log_info("Failed to deserialize buffer");
@@ -366,6 +359,5 @@ struct canvas_data *load_canvas_from_file(char *filename) {
   }
 
   free(buffer);
-
   return canvas_d;
 }

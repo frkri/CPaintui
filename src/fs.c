@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "fs.h"
+#include "logger.h"
 
 /*
     Loads a file into a buffer.
@@ -86,16 +87,16 @@ struct canvas_data *deserialize_buffer(char *buffer) {
     replacement for strtok, but strsep might not be available on all platforms
     See: https://man7.org/linux/man-pages/man3/strsep.3.html
   */
-  // Check if the buffer is empty
   if (buffer == NULL || strlen(buffer) == 0)
     return NULL;
 
   // Create a new canvas, needs to be a pointer so we can return it
   struct canvas_data *canvas = malloc(sizeof(struct canvas_data));
 
-  // Set width and height
   char *width_str = strsep(&buffer, ",");
   char *height_str = strsep(&buffer, ";");
+  if (width_str == NULL || height_str == NULL)
+    return NULL;
 
   canvas->width = atoi(width_str);
   canvas->height = atoi(height_str);
@@ -103,25 +104,24 @@ struct canvas_data *deserialize_buffer(char *buffer) {
   // Allocate memory for each row
   canvas->data = malloc(canvas->width * sizeof(struct canvas_pixel *));
 
-  // Allocate memory for each column
+  // Allocate memory for each pixel
   for (int i = 0; i < canvas->width; i++)
     canvas->data[i] = malloc(canvas->height * sizeof(struct canvas_pixel));
 
   for (int x = 0, y = 0; x < canvas->width; y++) {
-    // Get the next pixel data
+    // Get the next pixel data: <color>,<last_modified>;
     char *pixel_str = strsep(&buffer, ";");
-
-    // Get first value (color), leave the rest in pixel_str (last_modified)
-    char *color_str = strsep(&pixel_str, ",");
+    char *color_str = strsep(&pixel_str, ","); // Get first value (color)
+    if (color_str == NULL || pixel_str == NULL)
+      return NULL;
 
     int color = atoi(color_str);
     if (color > 7)
-      color = 7; // We only have 8 colors supported
+      color = 7; // We only support 8 colors
     int last_modified = atoi(pixel_str);
 
     // Create a new pixel
     struct canvas_pixel pixel = {color, last_modified};
-
     canvas->data[x][y] = pixel;
 
     // If we have reached the end of the row, move to the next row
