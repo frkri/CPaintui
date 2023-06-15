@@ -35,7 +35,7 @@ _Install will be based on the Compiler you use_
 meson setup build-default
 cd build-default
 
-# With Clang
+# With Clang (optional)
 # Requires LLVM to be installed, see Dockerfile in .devcontainers for more info
 CC=clang-15 CXX=clang-cpp-15 meson setup build-clang
 cd build-clang
@@ -43,7 +43,15 @@ cd build-clang
 # Inside the build directory
 meson compile
 
-# Optional
+# Optional step
 meson install
+
+```
+
+## Usage
+
+```bash
+# This will read from existing file or create a new one
+cpaintui <filename>
 
 ```
