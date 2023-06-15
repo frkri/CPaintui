@@ -20,49 +20,53 @@ struct modal {
   char *input;
 };
 
-bool create_modal_new(struct modal *modal) {
+bool create_modal(struct modal modal) {
+  scr_dump("temp_ncurses.out");
+  
   int w, h;
-
   get_window_size(stdscr, &w, &h);
 
   // Create a new window for the dialog box
   WINDOW *dialog_win = newwin(10, 50, h / 2 - 5, w / 2 - 25);
 
-  if (modal->text)
-    mvwprintw(dialog_win, 2, 1, "%s", modal->text); // Add text to the window
-  if (modal->box)
+  if (modal.text)
+    mvwprintw(dialog_win, 2, 1, "%s", modal.text); // Add text to the window
+  if (modal.box)
     box(dialog_win, 0, 0); // Add a border to the window, this will overwrite
                            // the text found on the edges
-  if (modal->title)
+  if (modal.title)
     mvwprintw(dialog_win, 0, 1, " %s ",
-              modal->title); // Add title to the window
+              modal.title); // Add title to the window
 
   // Overlay the dialog box on top of the current screen
   overwrite(dialog_win, stdscr);
   wrefresh(dialog_win);
 
+  // TODO Possibly remove this
   // If the modal should capture input
-  if (modal->capture_count > 0) {
-    modal->input = malloc(modal->capture_count * sizeof(char));
-    getnstr(modal->input, modal->capture_count);
+  if (modal.capture_count > 0) {
+    modal.input = malloc(modal.capture_count * sizeof(char));
+    // Wait until newline is entered
+    getnstr(modal.input, modal.capture_count);
   }
 
-  bool confirmed = false;
-
   // If we should run the confirm check
-  if (strlen(modal->confirm_chars) > 0) {
+  bool has_confirmed = false;
+  if (strlen(modal.confirm_chars) > 0) {
     // Wait for user input
     int ch = getch();
 
     // Check if the user accepted
-    for (int i = 0; modal->confirm_chars[i] != '\0'; i++) {
-      if (ch == modal->confirm_chars[i])
-        confirmed = true;
+    for (int i = 0; modal.confirm_chars[i] != '\0'; i++) {
+      if (ch == modal.confirm_chars[i])
+        has_confirmed = true;
     }
   }
 
   delwin(dialog_win);
+  scr_restore("temp_ncurses.out");
+  refresh();
 
   // If none match return false
-  return confirmed;
+  return has_confirmed;
 }

@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Window type enum
+enum window_type { win, pad };
+
 struct container {
   // Percentage of parent window
   int prc_w;
@@ -10,6 +13,9 @@ struct container {
 
   // Title of window
   char *title;
+
+  // Type of window
+  enum window_type type;
 
   // If window should be visible
   bool visible;
@@ -73,14 +79,13 @@ WINDOW *create_window_relative(WINDOW *win, float w_prc, float h_prc) {
 */
 int append_container(struct container *parent, struct container *child) {
   // Reallocate memory block for new child
-
   // This will be the size of the old array + 1
-  int new_size = sizeof(struct container *) * (parent->children_len + 1);
+  int new_size = sizeof(struct container *) * (parent->children_len * 2 + 1);
 
   parent->children = realloc(parent->children, new_size);
   if (parent->children == NULL) {
     printf("Could not allocate memory for new child container");
-    return 1;
+    exit(1);
   }
 
   // Append child to second to last index, leaving the last index empty
