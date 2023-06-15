@@ -8,20 +8,17 @@
       "version": "latest"
     }
   },
-  "capAdd": [
-    "SYS_PTRACE"
-  ],
-  "securityOpt": [
-    "seccomp=unconfined"
-  ],
+  "capAdd": ["SYS_PTRACE"],
+  "securityOpt": ["seccomp=unconfined"],
   // Configure tool-specific properties.
   "customizations": {
     // Configure properties specific to VS Code.
     "vscode": {
+      "settings": {
+        "clangd.path": "/usr/bin/clangd-15"
+      },
       // Add the IDs of extensions you want installed when the container is created.
-      "extensions": [
-        "llvm-vs-code-extensions.vscode-clangd"
-      ]
+      "extensions": ["llvm-vs-code-extensions.vscode-clangd"]
     }
   },
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
