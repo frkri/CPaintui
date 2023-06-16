@@ -12,6 +12,8 @@
 #include "util.h"
 #include "win.h"
 
+#include "cursor.c"
+
 int main(int argc, char *argv[]) {
   // Where argv[0] is the program name
   // and argv[1] is the first argument (filename).
@@ -44,10 +46,12 @@ int main(int argc, char *argv[]) {
   draw_windows(display, 0, 0);
   setup_log(display->children[1]->children[1]->win);
 
+  struct container *canvas = display->children[0]->children[0];
+
   // Create canvas data from file, if file is not found, create new canvas using
   // window size as default
   int w, h;
-  get_window_size(display->children[0]->children[0]->win, &w, &h);
+  get_window_size(canvas->win, &w, &h);
   struct canvas_data *canvas_data = load_canvas_from_file(argv[1], w, h);
   if (canvas_data == NULL)
     exit_self(display, canvas_data,
@@ -56,6 +60,10 @@ int main(int argc, char *argv[]) {
   // Update the canvas state
   refresh_canvas_state(canvas_data, display);
   log_info("Use H for help");
+
+  // Cursor status
+  int x = 2, y = 2;
+  int color = 0;
 
   // Input Handler
   while (true) {
@@ -66,6 +74,49 @@ int main(int argc, char *argv[]) {
       draw_windows(display, 0, 0);
       setup_log(display->children[1]->children[1]->win);
       refresh_canvas_state(canvas_data, display);
+      break;
+    case ' ':
+      toggle_draw_mode();
+      break;
+    case KEY_UP:
+      y--;
+      move_cursor(canvas->win, canvas_data, x, y, color);
+      break;
+    case KEY_DOWN:
+      y++;
+      move_cursor(canvas->win, canvas_data, x, y, color);
+      break;
+    case KEY_LEFT:
+      x--;
+      move_cursor(canvas->win, canvas_data, x, y, color);
+      break;
+    case KEY_RIGHT:
+      x++;
+      move_cursor(canvas->win, canvas_data, x, y, color);
+      break;
+    case '0':
+      color = 0;
+      break;
+    case '1':
+      color = 1;
+      break;
+    case '2':
+      color = 2;
+      break;
+    case '3':
+      color = 3;
+      break;
+    case '4':
+      color = 4;
+      break;
+    case '5':
+      color = 5;
+      break;
+    case '6':
+      color = 6;
+      break;
+    case '7':
+      color = 7;
       break;
     case 'h':
       show_help_modal();
@@ -123,24 +174,15 @@ int show_help_modal(void) {
   return 0;
 }
 
-int show_creation_modal(void) {
-  // TODO: Add validation and handle multiple inputs
-  // Maybe add new array just for input results?
-  struct modal modal_canvas = {
-      "Create new canvas", "Enter size of canvas (X-Y)", "", true, 15, NULL};
-  create_modal(modal_canvas);
-  printf("Received input: %s\n", modal_canvas.input);
-
-  free(modal_canvas.input);
-  return 0;
-}
-
 bool show_quit_modal(void) {
   // TODO: Check if canvas has been saved, if not prompt user to save
-  struct modal modal_quit = {
-      "Quit", "Are you sure you want to quit?\n\n\n\n\n\t\tY - Yes : N - No",
-      "yY",   true,
-      0,      NULL};
+  struct modal modal_quit = {"Quit",
+                             "Are you sure you want to quit?\n Any unsaved "
+                             "data will be lost!\n\n\n\n\t\tY - Yes : N - No",
+                             "yY",
+                             true,
+                             0,
+                             NULL};
   return create_modal(modal_quit);
 }
 
@@ -168,7 +210,6 @@ int refresh_canvas_state(struct canvas_data *canvas_d,
       wnoutrefresh(canvas);
     }
 
-  // Update the screen
   doupdate();
   return 0;
 }
@@ -347,7 +388,7 @@ struct canvas_data *load_canvas_from_file(char *filename, int w, int h) {
   char *buffer = load_file(filename);
   if (buffer == NULL) {
     log_info("File not found, creating new blank canvas");
-    buffer = create_buffer(w - 5, h - 2, 5);
+    buffer = create_buffer(w - 4, h - 2, 1);
     write_file(filename, buffer);
     buffer = load_file(filename);
   }
