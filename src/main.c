@@ -24,9 +24,9 @@ int main(int argc, char *argv[]) {
 
   // Initialize ncurses
   initscr();
-  cbreak();             // Stops buffering of Chars
+  cbreak();             // Stops buffering of chars
   noecho();             // Stops chars from being printed to the screen
-  keypad(stdscr, TRUE); // Allows for arrow keys to be used
+  keypad(stdscr, true); // Allows for arrow keys to be used
   curs_set(0);          // Hide cursor
 
   // Enable color
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
   struct canvas_data *canvas_data = safe_load_canvas_from_file(argv[1], w, h);
   if (canvas_data == NULL)
     exit_self(display, canvas_data, NULL,
-              "Could not read file, check if file contains a valid canvas");
+              "Could not read/parse file due to invalid format");
 
   // Update the canvas state
   refresh_canvas_state(canvas_data, display);
