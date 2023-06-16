@@ -93,7 +93,6 @@ int main(int argc, char *argv[]) {
       break;
     case 'h':
       show_help_modal();
-      log_info("Help window opened");
       refresh_canvas_state(canvas_data, display);
       break;
     case 'w':
@@ -227,21 +226,21 @@ struct container *setup_display(void) {
   display->children = NULL;
   display->children_len = 0;
 
-  struct container *top_row = malloc(sizeof(struct container));
+  struct container *first_column = malloc(sizeof(struct container));
   display->type = win;
-  top_row->prc_w = 100;
-  top_row->prc_h = 75;
-  top_row->title = NULL;
-  top_row->box = false;
-  top_row->visible = true;
-  top_row->parent = NULL;
-  top_row->children = NULL;
-  top_row->children_len = 0;
+  first_column->prc_w = 75;
+  first_column->prc_h = 100;
+  first_column->title = NULL;
+  first_column->box = false;
+  first_column->visible = true;
+  first_column->parent = NULL;
+  first_column->children = NULL;
+  first_column->children_len = 0;
 
   struct container *canvas = malloc(sizeof(struct container));
   display->type = win;
-  canvas->prc_w = 80;
-  canvas->prc_h = 100;
+  canvas->prc_w = 100;
+  canvas->prc_h = 90;
   canvas->title = NULL;
   canvas->box = false;
   canvas->visible = true;
@@ -249,31 +248,10 @@ struct container *setup_display(void) {
   canvas->children = NULL;
   canvas->children_len = 0;
 
-  struct container *info = malloc(sizeof(struct container));
-  display->type = win;
-  info->prc_w = 20;
-  info->prc_h = 100;
-  info->title = "Info";
-  info->box = true;
-  info->visible = true;
-  info->parent = NULL;
-  info->children = NULL;
-  info->children_len = 0;
-
-  struct container *bottom_row = malloc(sizeof(struct container));
-  display->type = win;
-  bottom_row->prc_w = 100;
-  bottom_row->prc_h = 25;
-  bottom_row->title = NULL;
-  bottom_row->box = true;
-  bottom_row->visible = true;
-  bottom_row->parent = NULL;
-  bottom_row->children = NULL;
-
   struct container *tools = malloc(sizeof(struct container));
   display->type = win;
-  tools->prc_w = 80;
-  tools->prc_h = 100;
+  tools->prc_w = 100;
+  tools->prc_h = 10;
   tools->title = "Colors";
   tools->box = true;
   tools->visible = true;
@@ -281,10 +259,31 @@ struct container *setup_display(void) {
   tools->children = NULL;
   tools->children_len = 0;
 
+  struct container *second_column = malloc(sizeof(struct container));
+  display->type = win;
+  second_column->prc_w = 25;
+  second_column->prc_h = 100;
+  second_column->title = NULL;
+  second_column->box = true;
+  second_column->visible = true;
+  second_column->parent = NULL;
+  second_column->children = NULL;
+
+  struct container *info = malloc(sizeof(struct container));
+  display->type = win;
+  info->prc_w = 100;
+  info->prc_h = 70;
+  info->title = "Info";
+  info->box = true;
+  info->visible = true;
+  info->parent = NULL;
+  info->children = NULL;
+  info->children_len = 0;
+
   struct container *log = malloc(sizeof(struct container));
   display->type = pad;
-  log->prc_w = 20;
-  log->prc_h = 100;
+  log->prc_w = 100;
+  log->prc_h = 30;
   log->title = "Log";
   log->box = true;
   log->visible = true;
@@ -293,16 +292,16 @@ struct container *setup_display(void) {
   log->children_len = 0;
 
   // Append rows to display
-  append_container(display, top_row);
-  append_container(display, bottom_row);
+  append_container(display, first_column);
+  append_container(display, second_column);
 
   // Append panels to top row
-  append_container(top_row, canvas);
-  append_container(top_row, info);
+  append_container(first_column, canvas);
+  append_container(first_column, tools);
 
   // Append panels to bottom row
-  append_container(bottom_row, tools);
-  append_container(bottom_row, log);
+  append_container(second_column, info);
+  append_container(second_column, log);
 
   return display;
 }
