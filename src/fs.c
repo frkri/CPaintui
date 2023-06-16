@@ -63,7 +63,7 @@ char *serialize_buffer(struct canvas_data *canvas) {
       char pixel_str[8] = {0};
 
       // Append the pixel data to the buffer
-      sprintf(pixel_str, "%d,%d;", pixel.color, pixel.last_modified);
+      sprintf(pixel_str, "%d,%ld;", pixel.color, pixel.last_modified);
       strcat(buffer, pixel_str);
     }
   return buffer;

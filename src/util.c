@@ -7,14 +7,14 @@
 
 #include "util.h"
 
-char *create_buffer(int width, int height, int color, int modified) {
+char *create_buffer(int width, int height, int color, long modified) {
   char *buffer = malloc(sizeof(char) * width * height * 20);
   sprintf(buffer, "%d,%d;", width, height);
 
   for (int x = 0; x < width; x++)
     for (int y = 0; y < height; y++) {
       char pixel_str[14] = {0};
-      sprintf(pixel_str, "%d,%d;", color, modified);
+      sprintf(pixel_str, "%d,%ld;", color, modified);
       strcat(buffer, pixel_str);
     }
 
