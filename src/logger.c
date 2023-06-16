@@ -59,7 +59,7 @@ void log_info(char *str) {
 }
 
 void print_log(void) {
-  wclear(logger->win);
+  werase(logger->win);
 
   for (int i = 0; i != logger->max_lines; i++) {
     if (logger->msg_context[i][0] == '\0')

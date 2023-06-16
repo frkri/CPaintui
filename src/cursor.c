@@ -5,6 +5,7 @@
 #include "logger.h"
 #include "win.h"
 #include <stdio.h>
+#include <time.h>
 
 struct cursor *setup_cursor(WINDOW *canvas, struct canvas_data *canvas_data) {
   int w, h;
@@ -99,6 +100,10 @@ bool draw_cursor(struct canvas_data *canvas_data, struct cursor *cursor,
         ->data[cursor->x - x_win_begin + x_win_begin_offset]
               [cursor->y - y_win_begin + y_win_begin_offset]
         .color = cursor->color;
+    canvas_data
+        ->data[cursor->x - x_win_begin + x_win_begin_offset]
+              [cursor->y - y_win_begin + y_win_begin_offset]
+        .last_modified = time(NULL);
   } else
     mvwprintw(cursor->canvas, cursor->y, cursor->x, "~");
   wattroff(cursor->canvas, COLOR_PAIR(cursor->color));

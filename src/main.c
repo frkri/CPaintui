@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "cursor.h"
 #include "fs.h"
@@ -65,6 +67,8 @@ int main(int argc, char *argv[]) {
 
   // Input handler
   while (true) {
+    refresh_info(display->children[1]->children[0]->win, argv[1], canvas_data,
+                 cursor);
     int ch = tolower(getch());
     switch (ch) {
     case ' ':
@@ -155,13 +159,37 @@ void exit_self(struct container *display, struct canvas_data *canvas_data,
   exit(0);
 }
 
+void refresh_info(WINDOW *aside, char *filename,
+                  struct canvas_data *canvas_data, struct cursor *cursor) {
+  int w, h;
+  get_window_size(aside, &w, &h);
+
+  werase(aside);
+  box(aside, 0, 0);
+  mvwprintw(aside, 0, 1, " Info ");
+  mvwprintw(aside, 1, 1, "Filename:\t%.*s", w - 17, filename);
+  mvwprintw(aside, 2, 1, "Canvas:\t%ix%i", canvas_data->width,
+            canvas_data->height);
+  mvwprintw(aside, 3, 1, "Mode:\t\t%s", cursor->is_active ? "Draw" : "Move");
+  mvwprintw(aside, 4, 1, "Position:\tx%i y%i", cursor->x, cursor->y);
+  mvwprintw(
+      aside, 5, 1, "Modified:\t%.*s", w - 17,
+      format_timestamp(canvas_data->data[cursor->x][cursor->y].last_modified));
+  mvwprintw(aside, 6, 1, "Color:\t\t");
+  wattron(aside, COLOR_PAIR(cursor->color));
+  wprintw(aside, "%i", cursor->color);
+  wattroff(aside, COLOR_PAIR(cursor->color));
+
+  wrefresh(aside);
+}
+
 int show_help_modal(void) {
   struct modal modal_help = {
       "Help",
       "H\t\t- Open help window\n W\t\t- Save canvas to "
       "file\n R\t\t- Refresh canvas\n Arrow Keys\t- Move "
-      "cursor\n Space\t\t- Switch between cursor"
-      "modes\n 0-7\t\t- Select color",
+      "cursor\n Space\t\t- Switch modes"
+      "\n 0-7\t\t- Select color",
       "Yy",
       true,
       0,
@@ -383,7 +411,7 @@ struct canvas_data *safe_load_canvas_from_file(char *filename, int w, int h) {
   char *buffer = load_file(filename);
   if (buffer == NULL) {
     log_info("File not found, creating new blank canvas");
-    buffer = create_buffer(w, h, 4);
+    buffer = create_buffer(w, h, 0, time(NULL));
     write_file(filename, buffer);
     buffer = load_file(filename);
   }

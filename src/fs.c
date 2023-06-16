@@ -113,7 +113,7 @@ struct canvas_data *deserialize_buffer(char *buffer) {
       color = 7;
     else if (color < 0)
       color = 0;
-    int last_modified = atoi(pixel_str);
+    int last_modified = atol(pixel_str);
 
     // Create a new pixel
     struct canvas_pixel pixel = {color, last_modified};

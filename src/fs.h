@@ -12,7 +12,7 @@ struct canvas_data {
 
 struct canvas_pixel {
   int color;
-  int last_modified;
+  long last_modified;
 };
 
 char *load_file(char *filename);
