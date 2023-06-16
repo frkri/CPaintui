@@ -268,24 +268,13 @@ struct container *setup_display(void) {
   struct container *canvas = malloc(sizeof(struct container));
   display->type = win;
   canvas->prc_w = 100;
-  canvas->prc_h = 90;
+  canvas->prc_h = 100;
   canvas->title = NULL;
   canvas->box = false;
   canvas->visible = true;
   canvas->parent = NULL;
   canvas->children = NULL;
   canvas->children_len = 0;
-
-  struct container *tools = malloc(sizeof(struct container));
-  display->type = win;
-  tools->prc_w = 100;
-  tools->prc_h = 10;
-  tools->title = "Colors";
-  tools->box = true;
-  tools->visible = true;
-  tools->parent = NULL;
-  tools->children = NULL;
-  tools->children_len = 0;
 
   struct container *second_column = malloc(sizeof(struct container));
   display->type = win;
@@ -325,7 +314,6 @@ struct container *setup_display(void) {
 
   // Append panels to top row
   append_container(first_column, canvas);
-  append_container(first_column, tools);
 
   // Append panels to bottom row
   append_container(second_column, info);
