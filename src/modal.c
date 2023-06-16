@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <curses.h>
 #include <ncurses.h>
 #include <stdlib.h>
@@ -8,13 +9,11 @@
 #include "win.h"
 
 bool create_modal(struct modal modal) {
-  scr_dump("temp_ncurses.out");
-
   int w, h;
   get_window_size(stdscr, &w, &h);
 
   // Create a new window for the dialog box
-  WINDOW *dialog_win = newwin(10, 50, h / 2 - 5, w / 2 - 25);
+  WINDOW *dialog_win = newwin(12, 40, h / 2 - 6, w / 2 - 20);
 
   if (modal.text)
     mvwprintw(dialog_win, 2, 1, "%s", modal.text); // Add text to the window
@@ -50,7 +49,6 @@ bool create_modal(struct modal modal) {
   }
 
   delwin(dialog_win);
-  scr_restore("temp_ncurses.out");
   refresh();
 
   // If none match return false

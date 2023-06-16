@@ -20,7 +20,9 @@ struct cursor *setup_cursor(WINDOW *canvas, struct canvas_data *canvas_data) {
 
   cursor->prev_x = w / 2;
   cursor->prev_y = h / 2;
-  cursor->prev_color = 0;
+  // Get 'pixel' at cursor position
+  chtype ch = mvwinch(cursor->canvas, cursor->y, cursor->x);
+  cursor->prev_color = PAIR_NUMBER(ch & A_COLOR); // Bitwise AND to get color
 
   draw_cursor(canvas_data, cursor, 0, 0);
   return cursor;
@@ -44,7 +46,6 @@ bool draw_cursor(struct canvas_data *canvas_data, struct cursor *cursor,
   if (canvas_data->width < w) {
     x_win_begin = (w - canvas_data->width) / 2;
     x_win_end = x_win_begin + canvas_data->width;
-
     x_win_begin_offset = 0;
   } else {
     x_win_begin = 0;

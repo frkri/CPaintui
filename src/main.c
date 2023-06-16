@@ -87,10 +87,14 @@ int main(int argc, char *argv[]) {
     case KEY_RIGHT:
       draw_cursor(canvas_data, cursor, 1, 0);
       break;
+    case 'r':
+      refresh_canvas_state(canvas_data, display);
+      log_info("Canvas refreshed");
+      break;
     case 'h':
       show_help_modal();
       log_info("Help window opened");
-      refresh();
+      refresh_canvas_state(canvas_data, display);
       break;
     case 'w':
       write_file(argv[1], serialize_buffer(canvas_data));
@@ -99,8 +103,10 @@ int main(int argc, char *argv[]) {
     case 'q':
       if (show_quit_modal())
         exit_self(display, canvas_data, cursor, "Exiting...");
+      refresh_canvas_state(canvas_data, display);
       break;
     case KEY_RESIZE:
+      // Perform a full rerender of the screen
       clear();
       draw_windows(display, 0, 0);
       setup_log(display->children[1]->children[1]->win);
@@ -154,7 +160,8 @@ int show_help_modal(void) {
   struct modal modal_help = {
       "Help",
       "H\t\t- Open help window\n W\t\t- Save canvas to "
-      "file\n Arrow Keys\t- Move cursor\n Space\t\t- Switch between cursor"
+      "file\n R\t\t- Refresh canvas\n Arrow Keys\t- Move "
+      "cursor\n Space\t\t- Switch between cursor"
       "modes\n 0-7\t\t- Select color",
       "Yy",
       true,
@@ -167,7 +174,7 @@ int show_help_modal(void) {
 bool show_quit_modal(void) {
   struct modal modal_quit = {"Quit",
                              "Are you sure you want to quit?\n Any unsaved "
-                             "data will be lost!\n\n\n\n\t\tY - Yes : N - No",
+                             "data will be lost!\n\n\n\n\t   Y - Yes : N - No",
                              "yY",
                              true,
                              0,
