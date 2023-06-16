@@ -116,8 +116,10 @@ struct canvas_data *deserialize_buffer(char *buffer) {
       return NULL;
 
     int color = atoi(color_str);
-    if (color > 7)
-      color = 7; // We only support 8 colors
+    if (color > 7) // We only support 8 colors
+      color = 7;
+    else if (color < 0)
+      color = 0;
     int last_modified = atoi(pixel_str);
 
     // Create a new pixel

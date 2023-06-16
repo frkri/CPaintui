@@ -5,14 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cursor.h"
 #include "fs.h"
 #include "logger.h"
 #include "main.h"
 #include "modal.h"
 #include "util.h"
 #include "win.h"
-
-#include "cursor.c"
 
 int main(int argc, char *argv[]) {
   // Where argv[0] is the program name
@@ -25,7 +24,6 @@ int main(int argc, char *argv[]) {
 
   // Initialize ncurses
   initscr();
-  // Set Options
   cbreak();             // Stops buffering of Chars
   noecho();             // Stops chars from being printed to the screen
   keypad(stdscr, TRUE); // Allows for arrow keys to be used
@@ -34,89 +32,57 @@ int main(int argc, char *argv[]) {
   // Enable color
   start_color();
   init_pair(0, COLOR_WHITE, COLOR_WHITE);
-  init_pair(1, COLOR_BLACK, COLOR_BLACK);
-  init_pair(2, COLOR_RED, COLOR_RED);
-  init_pair(3, COLOR_YELLOW, COLOR_YELLOW);
-  init_pair(4, COLOR_GREEN, COLOR_GREEN);
-  init_pair(5, COLOR_CYAN, COLOR_CYAN);
-  init_pair(6, COLOR_BLUE, COLOR_BLUE);
-  init_pair(7, COLOR_MAGENTA, COLOR_MAGENTA);
+  init_pair(1, COLOR_WHITE, COLOR_BLACK);
+  init_pair(2, COLOR_BLACK, COLOR_RED);
+  init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+  init_pair(4, COLOR_BLACK, COLOR_GREEN);
+  init_pair(5, COLOR_BLACK, COLOR_CYAN);
+  init_pair(6, COLOR_BLACK, COLOR_BLUE);
+  init_pair(7, COLOR_BLACK, COLOR_MAGENTA);
 
   struct container *display = setup_display();
   draw_windows(display, 0, 0);
   setup_log(display->children[1]->children[1]->win);
 
-  struct container *canvas = display->children[0]->children[0];
-
-  // Create canvas data from file, if file is not found, create new canvas using
-  // window size as default
   int w, h;
-  get_window_size(canvas->win, &w, &h);
-  struct canvas_data *canvas_data = load_canvas_from_file(argv[1], w, h);
+  get_window_size(display->children[0]->children[0]->win, &w, &h);
+  struct canvas_data *canvas_data = safe_load_canvas_from_file(argv[1], w, h);
   if (canvas_data == NULL)
-    exit_self(display, canvas_data,
+    exit_self(display, canvas_data, NULL,
               "Could not read file, check if file contains a valid canvas");
 
   // Update the canvas state
   refresh_canvas_state(canvas_data, display);
-  log_info("Use H for help");
+  struct cursor *cursor =
+      setup_cursor(display->children[0]->children[0]->win, canvas_data);
 
-  // Cursor status
-  int x = 2, y = 2;
-  int color = 0;
+  log_info("Use H for help");
+  if (has_colors() == false)
+    log_info("Your terminal does not support color!");
 
   // Input Handler
   while (true) {
     int ch = tolower(getch());
     switch (ch) {
-    case KEY_RESIZE:
-      clear();
-      draw_windows(display, 0, 0);
-      setup_log(display->children[1]->children[1]->win);
-      refresh_canvas_state(canvas_data, display);
-      break;
     case ' ':
-      toggle_draw_mode();
+      cursor->is_active = !cursor->is_active;
+      draw_cursor(canvas_data, cursor, 0, 0);
+      break;
+    case '0' ... '7':
+      cursor->color = ch - '0';
+      draw_cursor(canvas_data, cursor, 0, 0);
       break;
     case KEY_UP:
-      y--;
-      move_cursor(canvas->win, canvas_data, x, y, color);
+      draw_cursor(canvas_data, cursor, 0, -1);
       break;
     case KEY_DOWN:
-      y++;
-      move_cursor(canvas->win, canvas_data, x, y, color);
+      draw_cursor(canvas_data, cursor, 0, 1);
       break;
     case KEY_LEFT:
-      x--;
-      move_cursor(canvas->win, canvas_data, x, y, color);
+      draw_cursor(canvas_data, cursor, -1, 0);
       break;
     case KEY_RIGHT:
-      x++;
-      move_cursor(canvas->win, canvas_data, x, y, color);
-      break;
-    case '0':
-      color = 0;
-      break;
-    case '1':
-      color = 1;
-      break;
-    case '2':
-      color = 2;
-      break;
-    case '3':
-      color = 3;
-      break;
-    case '4':
-      color = 4;
-      break;
-    case '5':
-      color = 5;
-      break;
-    case '6':
-      color = 6;
-      break;
-    case '7':
-      color = 7;
+      draw_cursor(canvas_data, cursor, 1, 0);
       break;
     case 'h':
       show_help_modal();
@@ -128,22 +94,30 @@ int main(int argc, char *argv[]) {
       log_info("Canvas saved to file");
       break;
     case 'q':
-      if (show_quit_modal()) {
-        log_info("Quit confirmed");
-        exit_self(display, canvas_data, "Exiting...");
-      }
+      if (show_quit_modal())
+        exit_self(display, canvas_data, cursor, "Exiting...");
+      break;
+    case KEY_RESIZE:
+      clear();
+      draw_windows(display, 0, 0);
+      setup_log(display->children[1]->children[1]->win);
+      setup_cursor(display->children[0]->children[0]->win, canvas_data);
+      refresh_canvas_state(canvas_data, display);
       break;
     }
   }
-
   return 0;
 }
 
 void exit_self(struct container *display, struct canvas_data *canvas_data,
-               char *msg) {
+               struct cursor *cursor, char *msg) {
   cleanup_log();
   endwin();
   printf("%s\n", msg);
+
+  // Free the cursor
+  if (cursor != NULL)
+    free(cursor);
 
   if (display != NULL) {
     // Free the containers, this is maybe not needed, as the
@@ -168,14 +142,19 @@ void exit_self(struct container *display, struct canvas_data *canvas_data,
 
 int show_help_modal(void) {
   struct modal modal_help = {
-      "Help", "h - Open help window\n w - Save canvas to file", "Yy", true, 0,
+      "Help",
+      "H\t\t- Open help window\n W\t\t- Save canvas to "
+      "file\n Arrow Keys\t- Move cursor\n Space\t\t- Switch between cursor"
+      "modes\n 0-8\t\t- Select color",
+      "Yy",
+      true,
+      0,
       NULL};
   create_modal(modal_help);
   return 0;
 }
 
 bool show_quit_modal(void) {
-  // TODO: Check if canvas has been saved, if not prompt user to save
   struct modal modal_quit = {"Quit",
                              "Are you sure you want to quit?\n Any unsaved "
                              "data will be lost!\n\n\n\n\t\tY - Yes : N - No",
@@ -215,7 +194,7 @@ int refresh_canvas_state(struct canvas_data *canvas_d,
 }
 
 /*
-  Defines and draws the layout of the windows
+  Defines the layout of the windows
   Row 1: Canvas - Info
   Row 2: Tools  - Log
 */
@@ -278,7 +257,7 @@ struct container *setup_display(void) {
   display->type = win;
   tools->prc_w = 80;
   tools->prc_h = 100;
-  tools->title = "Tools";
+  tools->title = "Colors";
   tools->box = true;
   tools->visible = true;
   tools->parent = NULL;
@@ -384,11 +363,11 @@ void draw_windows(struct container *container, int container_x_offset,
   Will load a canvas from a file, if the file does not exist, it will create a
   new blank canvas file
 */
-struct canvas_data *load_canvas_from_file(char *filename, int w, int h) {
+struct canvas_data *safe_load_canvas_from_file(char *filename, int w, int h) {
   char *buffer = load_file(filename);
   if (buffer == NULL) {
     log_info("File not found, creating new blank canvas");
-    buffer = create_buffer(w - 4, h - 2, 1);
+    buffer = create_buffer(w, h, 4);
     write_file(filename, buffer);
     buffer = load_file(filename);
   }

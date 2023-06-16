@@ -62,8 +62,10 @@ void print_log(void) {
   wclear(logger->win);
 
   for (int i = 0; i != logger->max_lines; i++) {
+    if (logger->msg_context[i][0] == '\0')
+      continue;
     wmove(logger->win, i + 1, 1);
-    wprintw(logger->win, "|%s", logger->msg_context[i]);
+    wprintw(logger->win, ">%s", logger->msg_context[i]);
   }
   box(logger->win, 0, 0);
   wrefresh(logger->win);

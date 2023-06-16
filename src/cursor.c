@@ -1,61 +1,75 @@
-#include <curses.h>
+#include "stdlib.h"
 
+#include "cursor.h"
 #include "fs.h"
 #include "logger.h"
 #include "win.h"
+#include <stdio.h>
 
-bool draw_mode = false;
-int prev_cursor_x = 2;
-int prev_cursor_y = 2;
-int prev_cursor_color = 0;
-
-bool move_cursor(WINDOW *canvas, struct canvas_data *canvas_data, int x, int y,
-                 int color) {
-  int parent_w, parent_h;
-  get_window_size(canvas, &parent_w, &parent_h);
-
-  // Calculate the middle of the parent window
-  int x_offset = (parent_w - canvas_data->width) / 2 + x;
-  int y_offset = (parent_h - canvas_data->height) / 2 + y;
-
-  // Out of bounds check
+struct cursor *setup_cursor(WINDOW *canvas, struct canvas_data *canvas_data) {
   int w, h;
   get_window_size(canvas, &w, &h);
-  if (x < 0 || x >= w || y < 0 || y >= h)
+
+  struct cursor *cursor = malloc(sizeof(struct cursor));
+  cursor->canvas = canvas;
+  cursor->is_active = false;
+
+  cursor->x = w / 2;
+  cursor->y = h / 2;
+  cursor->color = 5;
+
+  cursor->prev_x = 0;
+  cursor->prev_y = 0;
+  cursor->prev_color = 0;
+
+  draw_cursor(canvas_data, cursor, 0, 0);
+
+  char temp[100];
+  sprintf(temp, "Cursor created at (%d, %d)", cursor->x, cursor->y);
+  log_info(temp);
+
+  return cursor;
+}
+
+bool draw_cursor(struct canvas_data *canvas_data, struct cursor *cursor,
+                 int x_offset, int y_offset) {
+  // Out of bounds check
+  int w, h;
+  get_window_size(cursor->canvas, &w, &h);
+  if (cursor->x + x_offset >= canvas_data->width || cursor->x + x_offset < 0 ||
+      cursor->y + y_offset >= canvas_data->height || cursor->y + y_offset < 0)
     return false;
 
+  // Set new cursor position
+  cursor->x += x_offset;
+  cursor->y += y_offset;
+
   // Restore last color of cursor
-  if (draw_mode) {
-    wattron(canvas, COLOR_PAIR(color));
-    mvwprintw(canvas, prev_cursor_y, prev_cursor_x, " ");
-    wattroff(canvas, COLOR_PAIR(color));
+  if (cursor->is_active) {
+    wattron(cursor->canvas, COLOR_PAIR(cursor->color));
+    mvwprintw(cursor->canvas, cursor->prev_y, cursor->prev_x, " ");
+    wattroff(cursor->canvas, COLOR_PAIR(cursor->color));
   } else {
-    wattron(canvas, COLOR_PAIR(prev_cursor_color));
-    mvwprintw(canvas, prev_cursor_y, prev_cursor_x, " ");
-    wattroff(canvas, COLOR_PAIR(prev_cursor_color));
+    wattron(cursor->canvas, COLOR_PAIR(cursor->prev_color));
+    mvwprintw(cursor->canvas, cursor->prev_y, cursor->prev_x, " ");
+    wattroff(cursor->canvas, COLOR_PAIR(cursor->prev_color));
   }
 
   // Update cursor position
-  prev_cursor_x = x;
-  prev_cursor_y = y;
-  chtype ch = mvwinch(canvas, y, x);
-  prev_cursor_color = PAIR_NUMBER(ch & A_COLOR);
+  cursor->prev_x = cursor->x;
+  cursor->prev_y = cursor->y;
+  chtype ch = mvwinch(cursor->canvas, cursor->y, cursor->x);
+  cursor->prev_color = PAIR_NUMBER(ch & A_COLOR);
 
   // Move cursor to position on canvas
-  wattron(canvas, COLOR_PAIR(color));
-  if (draw_mode) {
-    mvwprintw(canvas, y, x, "X");
-    canvas_data->data[x][y].color = color;
+  wattron(cursor->canvas, COLOR_PAIR(cursor->color));
+  if (cursor->is_active) {
+    mvwprintw(cursor->canvas, cursor->y, cursor->x, "*");
+    canvas_data->data[cursor->x][cursor->y].color = cursor->color;
   } else
-    mvwprintw(canvas, y, x, "O");
-  wattroff(canvas, COLOR_PAIR(color));
+    mvwprintw(cursor->canvas, cursor->y, cursor->x, "~");
+  wattroff(cursor->canvas, COLOR_PAIR(cursor->color));
 
-  wrefresh(canvas);
+  wrefresh(cursor->canvas);
   return true;
-}
-
-bool toggle_draw_mode() {
-  draw_mode = !draw_mode;
-  log_info("Draw mode aa");
-  return draw_mode;
 }
