@@ -49,7 +49,7 @@ void cleanup_log(void) {
 }
 
 /*
-    Logs a message to the Log window of the UI
+    Logs a info message to the Log window of the UI
 */
 void log_info(char *str) {
   // Append new line to log, removing the oldest line
@@ -65,7 +65,10 @@ void print_log(void) {
     if (logger->msg_context[i][0] == '\0')
       continue;
     wmove(logger->win, i + 1, 1);
+
+    wattron(logger->win, COLOR_PAIR(5));
     wprintw(logger->win, ">%s", logger->msg_context[i]);
+    wattroff(logger->win, COLOR_PAIR(5));
   }
   box(logger->win, 0, 0);
   wrefresh(logger->win);

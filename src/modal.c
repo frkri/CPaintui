@@ -29,7 +29,6 @@ bool create_modal(struct modal modal) {
   overwrite(dialog_win, stdscr);
   wrefresh(dialog_win);
 
-  // TODO Possibly remove this
   // If the modal should capture input
   if (modal.capture_count > 0) {
     modal.input = malloc(modal.capture_count * sizeof(char));

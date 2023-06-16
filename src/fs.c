@@ -33,24 +33,17 @@ char *load_file(char *filename) {
 }
 
 /*
-    Writes a char buffer to a file
-
+    Writes a char buffer to a file.
     Returns 0 on success, 1 on failure
 */
 int write_file(char *filename, char *buffer) {
-  // Open the file
   FILE *fp = fopen(filename, "w");
-  if (fp == NULL) {
-    printf("Could not open file %s", filename);
+  if (fp == NULL)
     return 1;
-  }
 
   // Write the buffer to the file
   fwrite(buffer, sizeof(char), strlen(buffer), fp);
-
-  // Close the file
   fclose(fp);
-
   return 0;
 }
 

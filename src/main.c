@@ -56,11 +56,14 @@ int main(int argc, char *argv[]) {
   struct cursor *cursor =
       setup_cursor(display->children[0]->children[0]->win, canvas_data);
 
+  // Log stuff
   log_info("Use H for help");
   if (has_colors() == false)
     log_info("Your terminal does not support color!");
+  if (canvas_data->width > w || canvas_data->height > h)
+    log_info("Terminal is too small for canvas, consider resizing it");
 
-  // Input Handler
+  // Input handler
   while (true) {
     int ch = tolower(getch());
     switch (ch) {
@@ -101,7 +104,14 @@ int main(int argc, char *argv[]) {
       clear();
       draw_windows(display, 0, 0);
       setup_log(display->children[1]->children[1]->win);
-      setup_cursor(display->children[0]->children[0]->win, canvas_data);
+      if (cursor != NULL)
+        free(cursor);
+      cursor =
+          setup_cursor(display->children[0]->children[0]->win, canvas_data);
+      int w, h;
+      get_window_size(display->children[0]->children[0]->win, &w, &h);
+      if (canvas_data->width > w || canvas_data->height > h)
+        log_info("Terminal is too small for canvas, consider resizing it");
       refresh_canvas_state(canvas_data, display);
       break;
     }
@@ -145,7 +155,7 @@ int show_help_modal(void) {
       "Help",
       "H\t\t- Open help window\n W\t\t- Save canvas to "
       "file\n Arrow Keys\t- Move cursor\n Space\t\t- Switch between cursor"
-      "modes\n 0-8\t\t- Select color",
+      "modes\n 0-7\t\t- Select color",
       "Yy",
       true,
       0,
